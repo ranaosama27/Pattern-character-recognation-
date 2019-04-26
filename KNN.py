@@ -1,28 +1,17 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Apr  9 23:21:54 2019
-
-@author: win8
-"""
-
-
-
+#import packages 
 import os
 import cv2
 import random
-import pickle
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import train_test_split
-#
+import numpy as np
 DataDir = "E:\Pattern-character-recognition\Dataset"
-Categories = ["Zero","One","Two","Three","Four","Five","six","Seven","Eight","Nine","A-Capital","B-Capital","C-Capital","D-Capital","E-Capital","F-Capital","G-Capital","H-Capital","I-Capital",
+Categories = ["Zero","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","A-Capital","B-Capital","C-Capital","D-Capital","E-Capital","F-Capital","G-Capital","H-Capital","I-Capital",
               "J-Capital","K-Capital","L-Capital","M-Capital","N-Capital","O-Capital","P-Capital","Q-Capital","R-Capital","S-Capital","T-Capital","U-Capital","V-Capital","W-Capital","X-Capital","Y-Capital","Z-Capital",
               "a-Small","b-Small","c-Small","d-Small","e-Small","f-Small","g-Small","h-Small","i-Small","j-Small","k-Small","l-Small","m-Small","n-Small","o-Small","p-Small","q-Small","r-Small","s-Small","t-Small",
               "u-Small","v-Small","w-Small","x-Small","y-Small","z-Small"]
 training_data = []
 image_size = 50
-x = []
-y = []
+x = [] # for Feature
+y = [] # for Label
 
 
 def create_trainig_data():
@@ -37,15 +26,28 @@ def create_trainig_data():
             except Exception as e:
                 pass
 
-random.shuffle(training_data)
 
 create_trainig_data()
+
+random.shuffle(training_data)
+
 for feature, label in training_data:
     x.append(feature)
     y.append(label)
 
+#import knn packages
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import GridSearchCV
+
+
+#split Data 
 X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=21, stratify=y)
-knn = KNeighborsClassifier(n_neighbors=6)
-knn.fit(X_train, y_train)
-score = knn.score(X_test, y_test)
-print(score)
+#create new a knn model 
+Knn = KNeighborsClassifier(n_neighbors=3)
+#fit model to data
+Knn.fit(X_train,y_train)
+#get Accuracy
+Score = Knn.score(X_test, y_test)
+print(Score)
