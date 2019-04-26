@@ -37,7 +37,8 @@ for feature, label in training_data:
     y.append(label)
 
 # Create Support Vector Classification object
-Modle = svm.SVC(gamma=0.001, C =100) # لازم تغير ف البرامترز ديه 
+
+Modle = svm.SVC(gamma=0.00001, C=500,kernel='linear',random_state=0)
 X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=21, stratify=y)
 
 Modle.fit(X_train, y_train)
