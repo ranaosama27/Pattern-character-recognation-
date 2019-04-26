@@ -1,0 +1,182 @@
+#Load Data set from google drive
+!git clone https://github.com/circulosmeos/gdown.pl.git
+%cd ./gdown.pl
+!./gdown.pl https://drive.google.com/open?id=14uH-Oyui1IQh-neRASzfpmKm-3c2Btdi CNN.rar
+!mv CNN.rar '..'
+%cd ..
+#Extract Data from Dataset.rar
+get_ipython().system_raw("unrar x CNN")
+
+#Load Data set from google drive
+!git clone https://github.com/circulosmeos/gdown.pl.git
+%cd ./gdown.pl
+!./gdown.pl https://drive.google.com/open?id=1NpEeyvDo5KW7XZiZmTvkVEPRkUniEaFV Test.rar
+!mv Test.rar '..'
+%cd ..
+#Extract Data from Dataset.rar
+get_ipython().system_raw("unrar x Test")
+
+#import packages 
+import os
+import cv2
+import random
+import tensorflow as tf
+import numpy as np
+
+Dataset_Train = "CNN"
+Dataset_Test  = "Test"
+
+Categories = ["Zero","One","Two","Three","Four","Five","six","Seven","Eight","Nine","A-Capital","B-Capital","C-Capital","D-Capital","E-Capital","F-Capital","G-Capital","H-Capital","I-Capital",
+              "J-Capital","K-Capital","L-Capital","M-Capital","N-Capital","O-Capital","P-Capital","Q-Capital","R-Capital","S-Capital","T-Capital","U-Capital","V-Capital","W-Capital","X-Capital","Y-Capital","Z-Capital",
+              "a-Small","b-Small","c-Small","d-Small","e-Small","f-Small","g-Small","h-Small","i-Small","j-Small","k-Small","l-Small","m-Small","n-Small","o-Small","p-Small","q-Small","r-Small","s-Small","t-Small",
+              "u-Small","v-Small","w-Small","x-Small","y-Small","z-Small"]
+training_data = []
+testing_data  = []
+image_size = 28
+x_Train = [] # for Feature
+y_Train = [] # for Label
+x_Test  = [] # for Feature
+y_Test  = [] # for Label
+
+
+def create_trainig_data():
+    for category in Categories:
+        path = os.path.join(Dataset_Train, category)
+        class_num = Categories.index(category)
+        for img in os.listdir(path):
+            try:
+                img_array = cv2.imread(os.path.join(path, img), 0)
+                new_array = cv2.resize(img_array, (image_size, image_size)).flatten()
+                training_data.append([new_array, class_num])
+            except Exception as e:
+                pass
+
+
+create_trainig_data()
+for feature, label in training_data:
+    x_Train.append(feature)
+    y_Train.append(label)
+ 
+def create_test_data():
+    for category in Categories:
+        path = os.path.join(Dataset_Test, category)
+        class_num = Categories.index(category)
+        for img in os.listdir(path):
+            try:
+                img_array = cv2.imread(os.path.join(path, img),0)
+                new_array = cv2.resize(img_array, (image_size, image_size)).flatten()
+                testing_data.append([new_array, class_num])
+            except Exception as e:
+                pass
+
+
+create_trainig_data()
+for feature, label in training_data:
+    x_Test.append(feature)
+    y_Test.append(label)
+
+#one hote enconding for data train and test 
+Class_train = []
+Class_test  = []
+
+# for train 
+for i in y_Train:
+  class_verctor =[]
+  for j in range(0,62): # 62 classes 
+      if (i==j):
+        class_verctor.append(1)
+      else:
+        class_verctor.append(0)
+  Class_train.append(class_verctor)
+
+# for test 
+for i in y_Test:
+  class_verctor =[]
+  for j in range(0,62): # 62 classes 
+      if (i==j):
+        class_verctor.append(1)
+      else:
+        class_verctor.append(0)
+  Class_test.append(class_verctor)
+
+import tensorflow as tf
+
+def init_weights(shape):
+    init_random_dist = tf.truncated_normal(shape, stddev=0.1)
+    return tf.Variable(init_random_dist)
+
+def init_bias(shape):
+    init_bias_vals = tf.constant(0.1, shape=shape)
+    return tf.Variable(init_bias_vals)
+
+def conv2d(x, W):
+    return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
+
+def max_pool_2by2(x):
+    return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
+                          strides=[1, 2, 2, 1], padding='SAME')
+
+def convolutional_layer(input_x, shape):
+    W = init_weights(shape)
+    b = init_bias([shape[3]])
+    return tf.nn.relu(conv2d(input_x, W) + b)
+
+def normal_full_layer(input_layer, size):
+    input_size = int(input_layer.get_shape()[1])
+    W = init_weights([input_size, size])
+    b = init_bias([size])
+    return tf.matmul(input_layer, W) + b
+
+x = tf.placeholder(tf.float32,shape=[None,784]) # 28 * 28 *1 = 784
+y_true = tf.placeholder(tf.float32,shape=[None,62])
+
+x_image = tf.reshape(x,[-1,28,28,1])
+
+convo_1 = convolutional_layer(x_image,shape=[6,6,1,32]) #  32 filter size = 6 pixle  , 1chanle 
+convo_1_pooling = max_pool_2by2(convo_1)
+
+convo_2 = convolutional_layer(convo_1_pooling,shape=[6,6,32,64])
+convo_2_pooling = max_pool_2by2(convo_2)
+
+convo_2_flat = tf.reshape(convo_2_pooling,[-1,7*7*64]) 
+full_layer_one = tf.nn.relu(normal_full_layer(convo_2_flat,1024))
+
+hold_prob = tf.placeholder(tf.float32) 
+full_one_dropout = tf.nn.dropout(full_layer_one,keep_prob=hold_prob)
+
+y_pred = normal_full_layer(full_one_dropout,62)
+
+cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_true,logits=y_pred))
+
+optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
+train = optimizer.minimize(cross_entropy)
+
+init = tf.global_variables_initializer()
+
+
+
+steps = 5000
+
+with tf.Session() as sess:
+    
+    sess.run(init)
+    
+    for i in range(steps):
+        
+        batch_x , batch_y = x_Train[i:i+50],Class_train[i:i+50]
+        #batch_x , batch_y= my_func(batch_x),my_func(batch_y)
+        
+        sess.run(train,feed_dict={x:batch_x,y_true:batch_y,hold_prob:0.5})
+        
+        # PRINT OUT A MESSAGE EVERY 100 STEPS
+        if i%100 == 0:
+            
+            print('Currently on step {}'.format(i))
+            print('Accuracy is:')
+            # Test the Train Model
+            matches = tf.equal(tf.argmax(y_pred,1),tf.argmax(y_true,1))
+
+            acc = tf.reduce_mean(tf.cast(matches,tf.float32))
+
+            print(sess.run(acc,feed_dict={x:x_Test,y_true:Class_test,hold_prob:1.0}))
+            print('\n')
